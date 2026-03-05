@@ -1,5 +1,3 @@
-version: "3.8"
-
 # This file is for local development.
 # For more specific configurations, see the /docker folder.
 
