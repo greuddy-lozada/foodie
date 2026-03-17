@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { GourmetColors, GourmetRadii } from "@/constants/gourmet-theme";
+import { posApi } from "@/api/pos";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IS_TABLET = SCREEN_WIDTH >= 768;
@@ -472,9 +473,37 @@ function CartPanel({
 export default function POSScreen() {
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [menuCategory, setMenuCategory] = useState<MenuCategory>("All");
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartVisible, setCartVisible] = useState(false);
   const [view, setView] = useState<"tables" | "menu">("tables");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const data = await posApi.getProducts();
+      // Map backend Product to frontend MenuItem
+      const mapped = data.map((p: any) => ({
+        id: p._id,
+        name: p.name,
+        price: p.price,
+        category: "Mains" as any, // backend doesn't have category yet
+        emoji: "🍲",
+        description: "Freshly prepared dish",
+        available: true,
+      }));
+      setMenuItems(mapped);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories: MenuCategory[] = [
     "All",
@@ -486,8 +515,8 @@ export default function POSScreen() {
 
   const filteredMenu =
     menuCategory === "All"
-      ? MENU_ITEMS
-      : MENU_ITEMS.filter((i) => i.category === menuCategory);
+      ? menuItems
+      : menuItems.filter((i) => i.category === menuCategory);
 
   const addToCart = useCallback((item: MenuItem) => {
     setCart((prev) => {
@@ -510,12 +539,24 @@ export default function POSScreen() {
     setView("menu");
   };
 
-  const handleSendToKitchen = () => {
-    setCart([]);
-    setCartVisible(false);
-    setView("tables");
-    setSelectedTable(null);
-    // TODO: API call
+  const handleSendToKitchen = async () => {
+    if (cart.length === 0) return;
+    try {
+      const orderItems = cart.map((item) => ({
+        productId: item.id,
+        quantity: item.quantity,
+        notes: "",
+      }));
+      await posApi.createOrder(orderItems);
+      setCart([]);
+      setCartVisible(false);
+      setView("tables");
+      setSelectedTable(null);
+      alert("Order sent to kitchen!");
+    } catch (error) {
+      console.error("Failed to send order:", error);
+      alert("Failed to send order. Please try again.");
+    }
   };
 
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);

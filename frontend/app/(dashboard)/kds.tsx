@@ -14,6 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { GourmetColors, GourmetRadii } from "@/constants/gourmet-theme";
+import { kdsApi } from "@/api/kds";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IS_TABLET = SCREEN_WIDTH >= 768;
@@ -376,23 +377,64 @@ function OrderCard({
 // ─── Main KDS Screen ──────────────────────────────────────────────────────────
 
 export default function KDSScreen() {
-  const [orders, setOrders] = useState<KDSOrder[]>(MOCK_ORDERS);
+  const [orders, setOrders] = useState<KDSOrder[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | OrderStatus>("all");
 
-  const startCooking = useCallback((id: string) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: "cooking" } : o)),
-    );
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 10000); // Poll every 10s
+    return () => clearInterval(interval);
   }, []);
 
-  const markReady = useCallback((id: string) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: "ready" } : o)),
-    );
+  const fetchOrders = async () => {
+    try {
+      const data = await kdsApi.getActiveOrders();
+      const mapped: KDSOrder[] = data.map((o: any) => ({
+        id: o._id,
+        tableNumber: 1, // backend doesn't have table yet
+        status: o.status.toLowerCase() === 'preparing' ? 'cooking' : o.status.toLowerCase(),
+        items: o.items.map((i: any) => ({
+          name: i.name,
+          quantity: i.quantity,
+          modifiers: i.notes ? [i.notes] : [],
+        })),
+        createdAt: new Date(o.createdAt),
+        priority: 1,
+      }));
+      setOrders(mapped);
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startCooking = useCallback(async (id: string) => {
+    try {
+      await kdsApi.updateStatus(id, "PREPARING" as any);
+      fetchOrders();
+    } catch (error) {
+      console.error("Failed to start cooking:", error);
+    }
   }, []);
 
-  const completeOrder = useCallback((id: string) => {
-    setOrders((prev) => prev.filter((o) => o.id !== id));
+  const markReady = useCallback(async (id: string) => {
+    try {
+      await kdsApi.updateStatus(id, "READY" as any);
+      fetchOrders();
+    } catch (error) {
+      console.error("Failed to mark ready:", error);
+    }
+  }, []);
+
+  const completeOrder = useCallback(async (id: string) => {
+    try {
+      await kdsApi.updateStatus(id, "FINISHED" as any);
+      fetchOrders();
+    } catch (error) {
+      console.error("Failed to complete order:", error);
+    }
   }, []);
 
   const filtered =

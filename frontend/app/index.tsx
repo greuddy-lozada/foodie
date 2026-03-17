@@ -699,7 +699,7 @@ export default function WelcomeLandingPage() {
                 backgroundColor={GourmetColors.accent.emerald}
                 paddingHorizontal="$3"
                 paddingVertical="$1"
-                borderRadius="$full"
+                borderRadius={9999}
               >
                 <Text color="#fff" fontSize={11} fontWeight="800">
                   MOST REVOLUTIONARY

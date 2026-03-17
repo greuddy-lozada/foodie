@@ -1,15 +1,17 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../../core/auth/auth.module';
 import { TenantModule } from '../../core/tenant/tenant.module';
+import { PosModule } from './pos/pos.module';
+import { KdsModule } from './kds/kds.module';
+import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
   imports: [
     AuthModule,
     TenantModule,
-    // Future sub-modules will be added here:
-    // PosModule,
-    // KdsModule,
-    // InventoryModule,
+    PosModule,
+    KdsModule,
+    InventoryModule,
   ],
   controllers: [],
   providers: [],

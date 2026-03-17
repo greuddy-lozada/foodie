@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { GourmetColors, GourmetRadii } from "@/constants/gourmet-theme";
+import { inventoryApi } from "@/api/inventory";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IS_TABLET = SCREEN_WIDTH >= 768;
@@ -420,10 +421,40 @@ function AdjustModal({
 // ─── Main Inventory Screen ────────────────────────────────────────────────────
 
 export default function InventoryScreen() {
-  const [inventory, setInventory] = useState<InventoryItem[]>(MOCK_INVENTORY);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<InventoryCategory>("All");
   const [search, setSearch] = useState("");
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null);
+
+  useEffect(() => {
+    fetchInventory();
+  }, []);
+
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+      const data = await inventoryApi.getItems();
+      // Map backend schema to frontend InventoryItem
+      const mapped = data.map((item: any) => ({
+        id: item._id,
+        name: item.name,
+        category: "Produce" as any, // backend doesn't have category yet
+        unit: item.unit,
+        currentStock: item.stock,
+        minStock: 5, // default
+        maxStock: 20, // default
+        emoji: "📦", // default
+        lastUpdated: "Now",
+        outOfStock: item.stock <= 0,
+      }));
+      setInventory(mapped);
+    } catch (error) {
+      console.error("Failed to fetch inventory:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories: InventoryCategory[] = [
     "All",
@@ -434,7 +465,8 @@ export default function InventoryScreen() {
     "Dry Goods",
   ];
 
-  const markOut = useCallback((id: string) => {
+  const markOut = useCallback(async (id: string) => {
+    // For now we just local update or we could have a "set stock to 0" endpoint
     setInventory((prev) =>
       prev.map((i) =>
         i.id === id ? { ...i, outOfStock: true, currentStock: 0 } : i,
@@ -442,7 +474,9 @@ export default function InventoryScreen() {
     );
   }, []);
 
-  const adjustStock = useCallback((id: string, qty: number) => {
+  const adjustStock = useCallback(async (id: string, qty: number) => {
+    // In a real app, we'd call an update endpoint
+    // For now, let's just update locally as we only have a "create" and "bulk decrement" in backend
     setInventory((prev) =>
       prev.map((i) =>
         i.id === id

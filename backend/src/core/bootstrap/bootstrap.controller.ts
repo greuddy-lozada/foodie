@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { BootstrapService } from './bootstrap.service';
 import { CreateFirstAdminDto } from './dto/create-first-admin.dto';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('bootstrap')
 export class BootstrapController {
@@ -22,6 +23,7 @@ export class BootstrapController {
   /**
    * Check if system requires setup (public endpoint)
    */
+  @Public()
   @Get('status')
   async getStatus(): Promise<{ requiresSetup: boolean }> {
     return {
@@ -32,6 +34,7 @@ export class BootstrapController {
   /**
    * Generate single-use setup token
    */
+  @Public()
   @Get('token')
   async generateToken(): Promise<{ token: string; expiresAt: Date; warning: string }> {
     try {
@@ -51,6 +54,7 @@ export class BootstrapController {
   /**
    * Create first admin (consumes token - single use!)
    */
+  @Public()
   @Post('setup')
   async createFirstAdmin(@Body() dto: CreateFirstAdminDto) {
     try {

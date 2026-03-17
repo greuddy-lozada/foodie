@@ -16,6 +16,7 @@ import {
   Theme,
 } from "tamagui";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { authApi } from "@/api/auth";
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
@@ -30,12 +31,17 @@ export default function LoginScreen() {
   const [passwordFocused, setPasswordFocused] = useState(false);
 
   const handleLogin = async () => {
+    if (!email || !password) return;
     setIsLoading(true);
-    // TODO: Implement actual login logic
-    setTimeout(() => {
+    try {
+      await authApi.login(email, password);
       setIsLoading(false);
-      console.log("Login:", { email, password });
-    }, 1500);
+      router.push("/(dashboard)/pos" as any);
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Login failed:", error);
+      alert("Invalid credentials. Please try again.");
+    }
   };
 
   return (
