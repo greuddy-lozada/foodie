@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { UserRepository } from './repositories/user.repository';
 import { InviteRepository } from './repositories/invite.repository';
@@ -112,9 +113,7 @@ export class AuthService {
   // ============================================
 
   async webLogin(context: TenantContextDto, user: UserDocument) {
-    await this.updateLastLogin(user._id.toString());
-    const fullUser = await this.getUserOrThrow(user._id.toString());
-    return this.generateTokens(fullUser, 'web');
+    return this.generateTokens(user, 'web');
   }
 
   async mobileLogin(
@@ -127,9 +126,7 @@ export class AuthService {
       tenantId: context.tenantId,
       device: dto,
     });
-    await this.updateLastLogin(user._id.toString());
-    const fullUser = await this.getUserOrThrow(user._id.toString());
-    return this.generateTokens(fullUser, 'mobile');
+    return this.generateTokens(user, 'mobile');
   }
 
   async superAdminLogin(context: TenantContextDto, user: UserDocument) {
@@ -138,9 +135,7 @@ export class AuthService {
         'Super admin login requires system tenant context',
       );
     }
-    await this.updateLastLogin(user._id.toString());
-    const fullUser = await this.getUserOrThrow(user._id.toString());
-    return this.generateTokens(fullUser, 'web', true);
+    return this.generateTokens(user, 'web', true);
   }
 
   // ============================================
@@ -181,7 +176,7 @@ export class AuthService {
       if (!user?.refreshToken)
         throw new UnauthorizedException('Session expired, please log in again');
 
-      const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
+      const isMatch = crypto.createHash('sha256').update(refreshToken).digest('hex') === user.refreshToken;
       if (!isMatch) {
         await this.userRepository.updateRefreshToken(user._id.toString(), null);
         await this.deviceRepository.deactivateUserDevices(user._id.toString());
@@ -282,7 +277,8 @@ export class AuthService {
     if (!isMatch)
       throw new BadRequestException('Current password is incorrect');
 
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    const bcryptRounds = this.configService.get<SecurityConfig>('security', { infer: true })?.bcryptRounds || 12;
+    const hashedPassword = await bcrypt.hash(newPassword, bcryptRounds);
     await this.userRepository.findOneAndUpdate(
       { _id: userId },
       {
@@ -327,8 +323,10 @@ export class AuthService {
         'You must change your password before logging in. Please check your email for instructions.',
       );
     }
-    const { tenantId: _, password, refreshToken, ...result } = user.toObject();
-    return result as any;
+    const userObj = user.toObject();
+    delete userObj.password;
+    delete userObj.refreshToken;
+    return userObj as any;
   }
 
   async validateSuperAdminCredentials(
@@ -345,8 +343,10 @@ export class AuthService {
     if (!isMatch)
       throw new UnauthorizedException('Invalid super admin credentials');
 
-    const { tenantId: _, password, refreshToken, ...result } = user.toObject();
-    return result as any;
+    const userObj = user.toObject();
+    delete userObj.password;
+    delete userObj.refreshToken;
+    return userObj as any;
   }
 
   private async validateTenant(tenantId: string): Promise<TenantDocument> {
@@ -390,7 +390,8 @@ export class AuthService {
         'A user with that email already exists in this tenant',
       );
     }
-    const hashedPassword = await bcrypt.hash(credentials.password, 12);
+    const bcryptRounds = this.configService.get<SecurityConfig>('security', { infer: true })?.bcryptRounds || 12;
+    const hashedPassword = await bcrypt.hash(credentials.password, bcryptRounds);
     const user = await this.userRepository.create({
       email: credentials.email.toLowerCase().trim(),
       password: hashedPassword,
@@ -410,7 +411,7 @@ export class AuthService {
   }
 
   private async generateTokens(
-    user: UserDocument,
+    user: any,
     type: 'web' | 'mobile',
     isSuperAdmin: boolean = false,
   ) {
@@ -456,11 +457,11 @@ export class AuthService {
         },
       ),
     ]);
-    const refreshHash = await bcrypt.hash(refreshToken, 12);
-    await this.userRepository.updateRefreshToken(
-      user._id.toString(),
-      refreshHash,
-    );
+    const refreshHash = crypto
+      .createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
+    await this.userRepository.loginSuccess(user._id.toString(), refreshHash);
 
     return {
       accessToken,

@@ -64,6 +64,15 @@ export default function DashboardLayout() {
         }}
       />
       <Tabs.Screen
+        name="reservations"
+        options={{
+          title: "Reservations",
+          tabBarIcon: ({ focused, color }) => (
+            <TabIcon name="calendar" focused={focused} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",

@@ -4,6 +4,7 @@ import { TenantModule } from '../../core/tenant/tenant.module';
 import { PosModule } from './pos/pos.module';
 import { KdsModule } from './kds/kds.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { ReservationsModule } from './reservations/reservations.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { InventoryModule } from './inventory/inventory.module';
     PosModule,
     KdsModule,
     InventoryModule,
+    ReservationsModule,
   ],
   controllers: [],
   providers: [],

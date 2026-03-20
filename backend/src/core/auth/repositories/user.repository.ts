@@ -46,4 +46,16 @@ export class UserRepository extends BaseRepository<UserDocument> {
       .findByIdAndUpdate(userId, { lastLogin: new Date() })
       .exec();
   }
+
+  async loginSuccess(
+    userId: string,
+    refreshToken: string | null,
+  ): Promise<void> {
+    await this.entityModel
+      .findByIdAndUpdate(userId, {
+        refreshToken,
+        lastLogin: new Date(),
+      })
+      .exec();
+  }
 }

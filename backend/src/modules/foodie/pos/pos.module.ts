@@ -15,6 +15,7 @@ import { InventoryModule } from '../inventory/inventory.module';
     InventoryModule,
   ],
   controllers: [PosController],
-  providers: [PosService]
+  providers: [PosService],
+  exports: [PosService],
 })
 export class PosModule {}
