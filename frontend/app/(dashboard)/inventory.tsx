@@ -426,6 +426,7 @@ export default function InventoryScreen() {
   const [category, setCategory] = useState<InventoryCategory>("All");
   const [search, setSearch] = useState("");
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   useEffect(() => {
     fetchInventory();
@@ -466,30 +467,47 @@ export default function InventoryScreen() {
   ];
 
   const markOut = useCallback(async (id: string) => {
-    // For now we just local update or we could have a "set stock to 0" endpoint
-    setInventory((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, outOfStock: true, currentStock: 0 } : i,
-      ),
-    );
+    try {
+      await inventoryApi.updateItem(id, { stock: 0, outOfStock: true });
+      setInventory((prev) =>
+        prev.map((i) =>
+          i.id === id ? { ...i, outOfStock: true, currentStock: 0 } : i,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to mark out of stock:", err);
+    }
   }, []);
 
   const adjustStock = useCallback(async (id: string, qty: number) => {
-    // In a real app, we'd call an update endpoint
-    // For now, let's just update locally as we only have a "create" and "bulk decrement" in backend
-    setInventory((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? {
-              ...i,
-              currentStock: qty,
-              outOfStock: qty === 0,
-              lastUpdated: "Just now",
-            }
-          : i,
-      ),
-    );
+    try {
+      await inventoryApi.updateItem(id, { stock: qty, outOfStock: qty === 0 });
+      setInventory((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                currentStock: qty,
+                outOfStock: qty === 0,
+                lastUpdated: "Just now",
+              }
+            : i,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to update stock:", err);
+    }
   }, []);
+
+  const createItem = async (data: { name: string; stock: number; unit: string; category: InventoryCategory }) => {
+    try {
+      await inventoryApi.createItem(data);
+      fetchInventory();
+      setShowCreate(false);
+    } catch (err) {
+      console.error("Failed to create item:", err);
+    }
+  };
 
   const filtered = inventory
     .filter((i) => category === "All" || i.category === category)
@@ -524,7 +542,7 @@ export default function InventoryScreen() {
               </Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.addNewBtn}>
+          <TouchableOpacity style={styles.addNewBtn} onPress={() => setShowCreate(true)}>
             <Ionicons
               name="add"
               size={20}
@@ -678,6 +696,26 @@ export default function InventoryScreen() {
         onClose={() => setAdjustItem(null)}
         onSave={adjustStock}
       />
+
+      {/* Create Modal */}
+      {showCreate && (
+        <Modal transparent animationType="slide" visible={showCreate} onRequestClose={() => setShowCreate(false)}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowCreate(false)} />
+          <View style={styles.adjustSheet}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.adjustTitle}>Add New Item</Text>
+            <TouchableOpacity 
+              style={styles.saveBtn} 
+              onPress={() => createItem({ name: "New Ingredient", stock: 10, unit: "kg", category: "Produce" })}
+            >
+              <LinearGradient colors={["#10B981", "#059669"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.saveBtnGradient}>
+                <Ionicons name="add" size={18} color="#fff" />
+                <Text style={styles.saveBtnText}>Quick Add Dummy Item</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }

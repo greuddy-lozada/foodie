@@ -18,9 +18,9 @@ export class TenantMiddleware implements NestMiddleware {
   async use(req: FastifyRequest, res: FastifyReply, next: () => void) {
     let tenantId: string | undefined;
 
-    // Skip tenant check for discovery endpoints
+    // Skip tenant check for discovery endpoints and OPTIONS requests
     const publicPaths = ['/tenants/verify', '/tenants/detect'];
-    if (publicPaths.some((path) => req.url.startsWith(path))) {
+    if (req.method === 'OPTIONS' || publicPaths.some((path) => req.url.startsWith(path))) {
       return next();
     }
 

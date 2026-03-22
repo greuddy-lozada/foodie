@@ -30,4 +30,12 @@ export class InventoryService {
       await this.inventoryModel.bulkWrite(bulkOps);
     }
   }
+
+  async update(tenantId: string, id: string, updates: Partial<InventoryItem>) {
+    return this.inventoryModel.findOneAndUpdate(
+      { _id: id, tenantId },
+      { $set: updates },
+      { new: true }
+    ).exec();
+  }
 }

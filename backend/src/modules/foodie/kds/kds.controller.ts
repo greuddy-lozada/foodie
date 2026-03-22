@@ -1,9 +1,11 @@
 import { Controller, Get, Patch, Body, Param } from '@nestjs/common';
 import { KdsService } from './kds.service';
 import { TenantContext } from '../../../core/auth/decorators/tenant-context.decorator';
+import { Public } from '../../../core/auth/decorators/public.decorator';
 import { TenantContextDto } from '../../../core/auth/dto';
 import { OrderStatus } from '../schemas/order.schema';
 
+@Public()
 @Controller('kds')
 export class KdsController {
   constructor(private readonly kdsService: KdsService) {}

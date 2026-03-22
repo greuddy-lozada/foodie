@@ -3,7 +3,9 @@ import { ReservationsService } from './reservations.service';
 import { TenantContext } from '../../../core/auth/decorators/tenant-context.decorator';
 import { TenantContextDto } from '../../../core/auth/dto';
 import { ReservationStatus } from '../schemas/reservation.schema';
+import { Public } from '../../../core/auth/decorators/public.decorator';
 
+@Public()
 @Controller('reservations')
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}

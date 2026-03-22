@@ -6,7 +6,9 @@ import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
-import fastifyHelmet from '@fastify/helmet';
+import fastifyHelmet, { FastifyHelmetOptions } from '@fastify/helmet';
+
+import { FastifyPluginCallback } from 'fastify';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -15,7 +17,8 @@ async function bootstrap() {
   );
 
   // Security Headers
-  await app.register(fastifyHelmet, {
+  const fastifyInstance = app.getHttpAdapter().getInstance() as import('fastify').FastifyInstance;
+  await fastifyInstance.register(fastifyHelmet, {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: [`'self'`],
@@ -29,8 +32,9 @@ async function bootstrap() {
   // CORS - Define allowed origins
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id'],
   });
 
   app.useGlobalPipes(

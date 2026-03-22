@@ -2,7 +2,9 @@ import { Controller, Get, Post, Body } from '@nestjs/common';
 import { PosService } from './pos.service';
 import { TenantContext } from '../../../core/auth/decorators/tenant-context.decorator';
 import { TenantContextDto } from '../../../core/auth/dto';
+import { Public } from '../../../core/auth/decorators/public.decorator';
 
+@Public()
 @Controller('pos')
 export class PosController {
   constructor(private readonly posService: PosService) {}
